@@ -1,0 +1,2 @@
+# runtime dependencies of the ae.dynamicod project
+ae_base
