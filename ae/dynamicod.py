@@ -3,7 +3,8 @@ dynamic execution of code blocks and expressions
 ================================================
 
 this ae namespace portion provides useful helper functions to evaluate Python expressions and execute
-Python code dynamically at application run-time.
+Python code dynamically at application run-time. these functions are e.g. used by the :class:`~ae.literal.Literal`
+class to dynamically determine literal values.
 
 dynamically executed code block or expression string offers convenience for powerful system and application
 configuration and for data-driven architectures.
@@ -16,10 +17,13 @@ and :func:`exec_with_return` are provided. the helper function :func:`try_eval` 
 
     make sure that any dynamically executed code is from a secure source to prevent code injections of malware.
     treat configuration files from untrusted sources with extreme caution and
-    only execute them after a complete check and/or within a sandbox.
+    only execute them after a complete check and/or within a sandbox/controlled-environment.
 
 .. hint::
-    these functions are e.g. used by the :class:`~.literal.Literal` class to dynamically determine literal values.
+    most of the helper functions provided by this module have the two arguments `glo_vars` and `loc_vars` to
+    pass the global and local variable names and values that are accessible from the dynamically evaluated/executed
+    expression/code. therefore, code injections can be controlled by passing dictionaries to these arguments which are
+    either empty or contain only secure symbols.
 """
 import ast
 import datetime
@@ -31,31 +35,31 @@ import unicodedata
 import weakref
 
 from string import ascii_letters, digits
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type
+from typing import Any, Callable, Optional, Type
 from _ast import stmt
 
-from ae.base import (                                                               # type: ignore
-    DATE_ISO, DATE_TIME_ISO, UNSET,
-    full_stack_trace,
-    module_attr, module_file_path, module_name,
-    norm_name, norm_path,
-    stack_frames, stack_var, stack_vars)
+# import all non-private base symbols which can be made accessible in dynamic code execution and expression evaluations
+from ae.base import *                                                                       # type: ignore # noqa: F403
 
 
-__version__ = '0.3.14'
+__version__ = '0.3.15'
 
 
 # suppress unused import err (needed e.g. for unpickling of dates via try_eval() and for include them into base_globals)
-_d = (os, DATE_ISO, DATE_TIME_ISO,
-      ascii_letters, digits, datetime, full_stack_trace, logging, logging_config,
-      module_attr, module_file_path, module_name,
-      norm_name, norm_path,
-      stack_frames, stack_var, stack_vars,
-      threading, unicodedata, weakref)
+_dc = (ascii_letters, digits, datetime, logging, logging_config, os, threading, unicodedata, weakref)
 
 
-def exec_with_return(code_block: str, ignored_exceptions: Tuple[Type[Exception], ...] = (),
-                     glo_vars: Optional[Dict[str, Any]] = None, loc_vars: Optional[Dict[str, Any]] = None
+VariableMap = dict[str, Any]
+
+
+def _merge_vars(add: VariableMap) -> VariableMap:
+    merged = base_globals.copy()
+    merged.update(add)
+    return merged
+
+
+def exec_with_return(code_block: str, ignored_exceptions: tuple[Type[Exception], ...] = (),
+                     glo_vars: Optional[VariableMap] = None, loc_vars: Optional[VariableMap] = None
                      ) -> Optional[Any]:
     """ execute python code block and return the resulting value of its last code line.
 
@@ -73,11 +77,11 @@ def exec_with_return(code_block: str, ignored_exceptions: Tuple[Type[Exception],
     if glo_vars is None:
         glo_vars = base_globals
     elif '_add_base_globals' in glo_vars:
-        glo_vars.update(base_globals)
+        glo_vars = _merge_vars(glo_vars)    # use base_globals updated/extended by the vars specified in glo_vars
 
     try:
         code_ast = ast.parse(code_block)    # raises SyntaxError if code block is invalid
-        nodes: List[stmt] = code_ast.body
+        nodes: list[stmt] = code_ast.body
         if nodes:
             if isinstance(nodes[-1], ast.Expr):
                 last_node = nodes.pop()
@@ -92,10 +96,10 @@ def exec_with_return(code_block: str, ignored_exceptions: Tuple[Type[Exception],
     except ignored_exceptions:
         pass                            # return UNSET if one of the ignorable exceptions raised in compiling
 
-    return UNSET                        # mypy needs explicit return statement and value
+    return UNSET                        # type: ignore # noqa: F405 # mypy needs explicit return statement and value
 
 
-def try_call(callee: Callable, *args, ignored_exceptions: Tuple[Type[Exception], ...] = (), **kwargs) -> Optional[Any]:
+def try_call(callee: Callable, *args, ignored_exceptions: tuple[Type[Exception], ...] = (), **kwargs) -> Optional[Any]:
     """ execute callable while ignoring specified exceptions and return callable return value.
 
     :param callee:              pointer to callable (either function pointer, lambda expression, a class, ...).
@@ -104,7 +108,7 @@ def try_call(callee: Callable, *args, ignored_exceptions: Tuple[Type[Exception],
     :param kwargs:              function keyword arguments dict.
     :return:                    function return value or UNSET if an ignored exception got thrown.
     """
-    ret = UNSET
+    ret = UNSET                                                                             # type: ignore # noqa: F405
     try:  # catch type conversion errors, e.g. for datetime.date(None) while bool(None) works (->False)
         ret = callee(*args, **kwargs)
     except ignored_exceptions:
@@ -112,8 +116,8 @@ def try_call(callee: Callable, *args, ignored_exceptions: Tuple[Type[Exception],
     return ret
 
 
-def try_eval(expr: str, ignored_exceptions: Tuple[Type[Exception], ...] = (),
-             glo_vars: Optional[Dict[str, Any]] = None, loc_vars: Optional[Dict[str, Any]] = None) -> Optional[Any]:
+def try_eval(expr: str, ignored_exceptions: tuple[Type[Exception], ...] = (),
+             glo_vars: Optional[VariableMap] = None, loc_vars: Optional[VariableMap] = None) -> Optional[Any]:
     """ evaluate expression string ignoring specified exceptions and return evaluated value.
 
     :param expr:                expression to evaluate.
@@ -122,12 +126,12 @@ def try_eval(expr: str, ignored_exceptions: Tuple[Type[Exception], ...] = (),
     :param loc_vars:            optional locals() available in the expression evaluation.
     :return:                    function return value or UNSET if an ignored exception got thrown.
     """
-    ret = UNSET
+    ret = UNSET                                                                             # type: ignore # noqa: F405
 
     if glo_vars is None:
         glo_vars = base_globals
     elif '_add_base_globals' in glo_vars:
-        glo_vars.update(base_globals)
+        glo_vars = _merge_vars(glo_vars)    # use base_globals updated/extended by the vars specified in glo_vars
 
     try:  # catch type conversion errors, e.g. for datetime.date(None) while bool(None) works (->False)
         ret = eval(expr, glo_vars, loc_vars)
@@ -136,8 +140,8 @@ def try_eval(expr: str, ignored_exceptions: Tuple[Type[Exception], ...] = (),
     return ret
 
 
-def try_exec(code_block: str, ignored_exceptions: Tuple[Type[Exception], ...] = (),
-             glo_vars: Optional[Dict[str, Any]] = None, loc_vars: Optional[Dict[str, Any]] = None) -> Optional[Any]:
+def try_exec(code_block: str, ignored_exceptions: tuple[Type[Exception], ...] = (),
+             glo_vars: Optional[VariableMap] = None, loc_vars: Optional[VariableMap] = None) -> Optional[Any]:
     """ execute python code block string ignoring specified exceptions and return value of last code line in block.
 
     :param code_block:          python code block to be executed.
@@ -146,7 +150,7 @@ def try_exec(code_block: str, ignored_exceptions: Tuple[Type[Exception], ...] = 
     :param loc_vars:            optional locals() available in the code execution.
     :return:                    function return value or UNSET if an ignored exception got thrown.
     """
-    ret = UNSET
+    ret = UNSET                                                                             # type: ignore # noqa: F405
     try:
         ret = exec_with_return(code_block, glo_vars=glo_vars, loc_vars=loc_vars)
     except ignored_exceptions:

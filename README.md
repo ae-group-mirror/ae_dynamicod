@@ -1,16 +1,16 @@
-<!-- THIS FILE IS EXCLUSIVELY MAINTAINED by the project ae.ae V0.3.90 -->
-<!-- THIS FILE IS EXCLUSIVELY MAINTAINED by the project aedev.tpl_namespace_root V0.3.12 -->
-# dynamicod 0.3.14
+<!-- THIS FILE IS EXCLUSIVELY MAINTAINED by the project ae.ae V0.3.95 -->
+<!-- THIS FILE IS EXCLUSIVELY MAINTAINED by the project aedev.tpl_namespace_root V0.3.14 -->
+# dynamicod 0.3.15
 
 [![GitLab develop](https://img.shields.io/gitlab/pipeline/ae-group/ae_dynamicod/develop?logo=python)](
     https://gitlab.com/ae-group/ae_dynamicod)
 [![LatestPyPIrelease](
-    https://img.shields.io/gitlab/pipeline/ae-group/ae_dynamicod/release?logo=python)](
-    https://gitlab.com/ae-group/ae_dynamicod/-/tree/release)
+    https://img.shields.io/gitlab/pipeline/ae-group/ae_dynamicod/release0.3.14?logo=python)](
+    https://gitlab.com/ae-group/ae_dynamicod/-/tree/release0.3.14)
 [![PyPIVersions](https://img.shields.io/pypi/v/ae_dynamicod)](
     https://pypi.org/project/ae-dynamicod/#history)
 
->ae namespace module portion dynamicod: dynamic execution of code blocks and expressions.
+>ae_dynamicod module 0.3.15.
 
 [![Coverage](https://ae-group.gitlab.io/ae_dynamicod/coverage.svg)](
     https://ae-group.gitlab.io/ae_dynamicod/coverage/index.html)
