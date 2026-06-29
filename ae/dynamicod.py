@@ -26,23 +26,28 @@ and :func:`exec_with_return` are provided. the helper function :func:`try_eval` 
     either empty or contain only secure symbols.
 """
 import ast
+# noinspection PyUnusedImports
 import datetime
 import logging
 import logging.config as logging_config
+# noinspection PyUnusedImports
 import os
 import threading
+# noinspection PyUnusedImports
 import unicodedata
 import weakref
 
+from collections.abc import Callable
 from string import ascii_letters, digits
-from typing import Any, Callable, Optional, Type
+# noinspection PyUnusedImports
+from typing import Any
 from _ast import stmt
 
 # import all non-private base symbols which can be made accessible in dynamic code execution and expression evaluations
-from ae.base import *                                                                       # type: ignore # noqa: F403
+from ae.base import *           # type: ignore # noqa: F403 # pylint: disable=wildcard-import,unused-wildcard-import
 
 
-__version__ = '0.3.15'
+__version__ = '0.3.16'
 
 
 # suppress unused import err (needed e.g. for unpickling of dates via try_eval() and for include them into base_globals)
@@ -58,12 +63,12 @@ def _merge_vars(add: VariableMap) -> VariableMap:
     return merged
 
 
-def exec_with_return(code_block: str, ignored_exceptions: tuple[Type[Exception], ...] = (),
-                     glo_vars: Optional[VariableMap] = None, loc_vars: Optional[VariableMap] = None
-                     ) -> Optional[Any]:
-    """ execute python code block and return the resulting value of its last code line.
+def exec_with_return(code_block: str, ignored_exceptions: tuple[type[Exception], ...] = (),
+                     glo_vars: VariableMap | None = None, loc_vars: VariableMap | None = None
+                     ) -> Any | None:
+    """ execute Python code block and return the resulting value of its last code line.
 
-    :param code_block:          python code block to execute.
+    :param code_block:          Python code block to execute.
     :param ignored_exceptions:  tuple of ignored exceptions.
     :param glo_vars:            optional globals() available in the code execution.
     :param loc_vars:            optional locals() available in the code execution.
@@ -87,19 +92,18 @@ def exec_with_return(code_block: str, ignored_exceptions: tuple[Type[Exception],
                 last_node = nodes.pop()
                 if len(nodes) > 0:
                     # noinspection BuiltinExec
-                    exec(compile(code_ast, "<ast>", 'exec'), glo_vars, loc_vars)
-                # noinspection PyTypeChecker
-                # .. and mypy needs getattr() instead of last_node.value
+                    exec(compile(code_ast, "<ast>", 'exec'), glo_vars, loc_vars)    # pylint: disable=exec-used
+                # mypy needs getattr() instead of last_node.value # pylint: disable=eval-used
                 return eval(compile(ast.Expression(getattr(last_node, 'value')), "<ast>", 'eval'), glo_vars, loc_vars)
             # noinspection BuiltinExec
-            exec(compile(code_ast, "<ast>", 'exec'), glo_vars, loc_vars)
+            exec(compile(code_ast, "<ast>", 'exec'), glo_vars, loc_vars)            # pylint: disable=exec-used
     except ignored_exceptions:
         pass                            # return UNSET if one of the ignorable exceptions raised in compiling
 
     return UNSET                        # type: ignore # noqa: F405 # mypy needs explicit return statement and value
 
 
-def try_call(callee: Callable, *args, ignored_exceptions: tuple[Type[Exception], ...] = (), **kwargs) -> Optional[Any]:
+def try_call(callee: Callable, *args, ignored_exceptions: tuple[type[Exception], ...] = (), **kwargs) -> Any | None:
     """ execute callable while ignoring specified exceptions and return callable return value.
 
     :param callee:              pointer to callable (either function pointer, lambda expression, a class, ...).
@@ -116,8 +120,8 @@ def try_call(callee: Callable, *args, ignored_exceptions: tuple[Type[Exception],
     return ret
 
 
-def try_eval(expr: str, ignored_exceptions: tuple[Type[Exception], ...] = (),
-             glo_vars: Optional[VariableMap] = None, loc_vars: Optional[VariableMap] = None) -> Optional[Any]:
+def try_eval(expr: str, ignored_exceptions: tuple[type[Exception], ...] = (),
+             glo_vars: VariableMap | None = None, loc_vars: VariableMap | None = None) -> Any | None:
     """ evaluate expression string ignoring specified exceptions and return evaluated value.
 
     :param expr:                expression to evaluate.
@@ -134,17 +138,17 @@ def try_eval(expr: str, ignored_exceptions: tuple[Type[Exception], ...] = (),
         glo_vars = _merge_vars(glo_vars)    # use base_globals updated/extended by the vars specified in glo_vars
 
     try:  # catch type conversion errors, e.g. for datetime.date(None) while bool(None) works (->False)
-        ret = eval(expr, glo_vars, loc_vars)
+        ret = eval(expr, glo_vars, loc_vars)            # pylint: disable=eval-used
     except ignored_exceptions:
         pass
     return ret
 
 
-def try_exec(code_block: str, ignored_exceptions: tuple[Type[Exception], ...] = (),
-             glo_vars: Optional[VariableMap] = None, loc_vars: Optional[VariableMap] = None) -> Optional[Any]:
-    """ execute python code block string ignoring specified exceptions and return value of last code line in block.
+def try_exec(code_block: str, ignored_exceptions: tuple[type[Exception], ...] = (),
+             glo_vars: VariableMap | None = None, loc_vars: VariableMap | None = None) -> Any | None:
+    """ execute Python code block string ignoring specified exceptions and return value of last code line in block.
 
-    :param code_block:          python code block to be executed.
+    :param code_block:          Python code block to be executed.
     :param ignored_exceptions:  tuple of ignored exceptions.
     :param glo_vars:            optional globals() available in the code execution.
     :param loc_vars:            optional locals() available in the code execution.
