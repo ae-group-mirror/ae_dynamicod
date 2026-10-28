@@ -1,2 +1,3 @@
 # runtime dependencies of the ae.dynamicod project
 ae_base
+ae_paths    # indirectly via :func:`ae.dynamicod._import_names() for dynamic code execution and expression evaluations
